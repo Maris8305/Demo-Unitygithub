@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a725a0b68e02abf488c277f96a351d97
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288976
+  packageName: Lowpoly Chest Monster
+  packageVersion: 1.0
+  assetPath: Assets/VertexModeler/ChestMonster/Material/Wood.mat
+  uploadId: 680063

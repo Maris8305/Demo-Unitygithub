@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 1438033e51a9f5742b78959336420229
+timeCreated: 1484146680
+licenseType: Store
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 267961
+  packageName: 'Starter Assets: Character Controllers | URP'
+  packageVersion: 2.0.2
+  assetPath: Assets/Starter Assets/TutorialInfo/Scripts/Editor/ReadmeEditor.cs
+  uploadId: 721456

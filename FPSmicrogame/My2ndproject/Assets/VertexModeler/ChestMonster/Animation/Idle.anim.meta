@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 09f8d87331e7ef246bcc3aeadb5fa0e7
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288976
+  packageName: Lowpoly Chest Monster
+  packageVersion: 1.0
+  assetPath: Assets/VertexModeler/ChestMonster/Animation/Idle.anim
+  uploadId: 680063

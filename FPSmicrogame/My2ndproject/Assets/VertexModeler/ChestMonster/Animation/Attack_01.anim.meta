@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b429eb202d6ef124a81c4f751850cead
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288976
+  packageName: Lowpoly Chest Monster
+  packageVersion: 1.0
+  assetPath: Assets/VertexModeler/ChestMonster/Animation/Attack_01.anim
+  uploadId: 680063

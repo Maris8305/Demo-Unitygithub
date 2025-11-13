@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0b4080e93e513f045a2821ba8d111553
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 288976
+  packageName: Lowpoly Chest Monster
+  packageVersion: 1.0
+  assetPath: Assets/VertexModeler/ChestMonster/Material/Iron.mat
+  uploadId: 680063

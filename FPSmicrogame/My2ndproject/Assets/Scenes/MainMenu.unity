@@ -1050,7 +1050,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02117845a7021cf42bb67ce6b495547e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MenuStuff
-  nextSceneName: mainscene.unity
+  nextSceneName: GamePlay
 --- !u!114 &1693730917
 MonoBehaviour:
   m_ObjectHideFlags: 0

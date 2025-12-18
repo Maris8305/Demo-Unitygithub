@@ -5,14 +5,17 @@ TagManager:
   serializedVersion: 3
   tags:
   - Drop down
+  - Reach
+  - Enemy
+  - CinemachineTarget
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Enemy
   - Water
   - UI
-  - 
+  - EnemyTrigger
   - 
   - 
   - 

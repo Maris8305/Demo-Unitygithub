@@ -3,149 +3,384 @@ using UnityEngine.AI;
 
 public class EnemyController : MonoBehaviour
 {
-    public Transform[] waypoints;
+    [Header("Patrol Settings")]
+    public Transform[] waypoints; // Để Size = 0 nếu muốn đứng yên
     public float idleTime = 2f;
-    public float walkSpeed = 2f; // Walking speed.
-    public float chaseSpeed = 4f; // Chasing speed.
+    public float walkSpeed = 1.4f;
+
+    [Header("Chase & Attack Settings")]
+    public float chaseSpeed = 3.5f;
     public float sightDistance = 10f;
+    public float attackDistance = 2f; // Khoảng cách tấn công
+    public float attackCooldown = 1.5f; // Thời gian giữa các đòn
+    public int attackDamage = 10;
+
+    [Header("Audio")]
     public AudioClip idleSound;
     public AudioClip walkingSound;
     public AudioClip chasingSound;
+    public AudioClip attackSound;
 
     private int currentWaypointIndex = 0;
     private NavMeshAgent agent;
     private Animator animator;
     private float idleTimer = 0f;
+    private float attackTimer = 0f;
     private Transform player;
     private AudioSource audioSource;
+    private EnemyHealth enemyHealth;
+    private bool isDead = false;
 
-    private enum EnemyState { Idle, Walk, Chase }
+    private enum EnemyState { Idle, Walk, Chase, Attack }
     private EnemyState currentState = EnemyState.Idle;
 
-    private bool isChasingAnimation = false;
-
+   
+   
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
         animator = GetComponent<Animator>();
         audioSource = GetComponent<AudioSource>();
+        enemyHealth = GetComponent<EnemyHealth>();
 
-        // Try to find player, but don't assume it's found immediately
-        var p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null)
-            player = p.transform;
+      
+        if (animator != null)
+        {
+            animator.applyRootMotion = false;
+        }
 
-        // Ensure agent exists and is on the navmesh before setting destinations
-        if (agent != null && agent.isOnNavMesh)
+      
+        if (agent != null)
+        {
+            agent.speed = walkSpeed;
+            agent.autoBraking = false;
+            agent.acceleration = 4;
+            agent.angularSpeed = 120;
+        }
+
+        
+        GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null)
+        {
+            player = playerObj.transform;
+
+            
+            Collider[] enemyColliders = GetComponentsInChildren<Collider>();
+            Collider[] playerColliders = player.GetComponentsInChildren<Collider>();
+
+            foreach (Collider enemyCol in enemyColliders)
+            {
+                foreach (Collider playerCol in playerColliders)
+                {
+                    Physics.IgnoreCollision(enemyCol, playerCol);
+                }
+            }
+
+            Debug.Log("Enemy and Player ignored collision!");
+        }
+
+        if (agent != null && agent.isOnNavMesh && waypoints != null && waypoints.Length > 0)
+        {
             SetDestinationToWaypoint();
-        else if (agent == null)
-            Debug.LogWarning("EnemyController: NavMeshAgent component missing.");
+        }
     }
 
     private void Update()
     {
-        // Try to recover player reference if still null (in case player is created at runtime)
+        // Kiểm tra chết
+        if (CheckIfDead())
+            return;
+
+        // Tìm player nếu chưa có
         if (player == null)
         {
-            var p = GameObject.FindGameObjectWithTag("Player");
-            if (p != null)
-                player = p.transform;
+            GameObject playerObj = GameObject.FindGameObjectWithTag("Player");
+            if (playerObj != null)
+            {
+                player = playerObj.transform;
+            }
         }
 
         if (agent == null)
             return;
 
+        attackTimer += Time.deltaTime;
+
         switch (currentState)
         {
             case EnemyState.Idle:
-                idleTimer += Time.deltaTime;
-                if (animator) { animator.SetBool("IsWalking", false); animator.SetBool("IsChasing", false); }
-                PlaySound(idleSound);
-
-                if (idleTimer >= idleTime)
-                {
-                    NextWaypoint();
-                }
-
-                CheckForPlayerDetection();
+                IdleState();
                 break;
 
             case EnemyState.Walk:
-                idleTimer = 0f;
-                if (animator) { animator.SetBool("IsWalking", true); animator.SetBool("IsChasing", false); }
-                PlaySound(walkingSound);
-
-                if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
-                {
-                    currentState = EnemyState.Idle;
-                }
-
-                CheckForPlayerDetection();
+                WalkState();
                 break;
 
             case EnemyState.Chase:
-                idleTimer = 0f;
-                agent.speed = chaseSpeed; // Set the chase speed.
+                ChaseState();
+                break;
 
-                if (player != null)
-                    agent.SetDestination(player.position);
-
-                isChasingAnimation = true;
-                if (animator) animator.SetBool("IsChasing", true);
-
-                PlaySound(chasingSound);
-
-                if (player != null)
-                {
-                    if (Vector3.Distance(transform.position, player.position) > sightDistance)
-                    {
-                        currentState = EnemyState.Walk;
-                        agent.speed = walkSpeed; // Restore walking speed.
-                    }
-                }
-                else
-                {
-                    // If we lost the player transform, fall back to walk or idle
-                    currentState = (waypoints != null && waypoints.Length > 0) ? EnemyState.Walk : EnemyState.Idle;
-                }
+            case EnemyState.Attack:
+                AttackState();
                 break;
         }
     }
 
-    private void CheckForPlayerDetection()
+    private bool CheckIfDead()
+    {
+        if (isDead)
+            return true;
+
+        if (enemyHealth != null && enemyHealth.GetCurrentHealth() <= 0)
+        {
+            OnEnemyDeath();
+            return true;
+        }
+
+        return false;
+    }
+
+    private void OnEnemyDeath()
+    {
+        isDead = true;
+
+        if (agent != null)
+        {
+            agent.isStopped = true;
+            agent.velocity = Vector3.zero;
+        }
+
+        if (animator != null)
+        {
+            animator.SetBool("Death", true);
+        }
+
+        this.enabled = false;
+
+        if (audioSource != null && audioSource.isPlaying)
+        {
+            audioSource.Stop();
+        }
+
+        Debug.Log("Enemy died!");
+        Destroy(gameObject, 3f);
+    }
+
+    private void IdleState()
+    {
+        if (agent != null)
+            agent.isStopped = false;
+
+        idleTimer += Time.deltaTime;
+
+        if (animator != null)
+        {
+            animator.SetBool("IsWalking", false);
+            animator.SetBool("IsChasing", false);
+        }
+
+        PlaySound(idleSound);
+
+        // Chỉ patrol nếu có waypoints
+        if (waypoints != null && waypoints.Length > 0 && idleTimer >= idleTime)
+        {
+            NextWaypoint();
+        }
+
+        CheckForPlayerDetection();
+    }
+
+    private void WalkState()
+    {
+        idleTimer = 0f;
+
+        if (agent != null)
+        {
+            agent.isStopped = false;
+            agent.speed = walkSpeed;
+        }
+
+        if (animator != null)
+        {
+            animator.SetBool("IsWalking", true);
+            animator.SetBool("IsChasing", false);
+        }
+
+        PlaySound(walkingSound);
+
+        // SỬA: Check chặt chẽ hơn khi đến waypoint
+        if (agent != null && !agent.pathPending)
+        {
+            // Nếu đã đến gần waypoint (1 đơn vị) hoặc không còn path
+            if (agent.remainingDistance <= agent.stoppingDistance + 0.1f)
+            {
+                currentState = EnemyState.Idle;
+                Debug.Log("Reached waypoint " + currentWaypointIndex);
+            }
+        }
+
+        CheckForPlayerDetection();
+    }
+
+    private void ChaseState()
+    {
+        idleTimer = 0f;
+
+        if (player == null)
+        {
+            ReturnToPatrol();
+            return;
+        }
+
+        if (agent != null)
+        {
+            agent.isStopped = false;
+            agent.speed = chaseSpeed;
+        }
+
+        float distToPlayer = Vector3.Distance(transform.position, player.position);
+
+        // Đủ gần để tấn công
+        if (distToPlayer <= attackDistance)
+        {
+            currentState = EnemyState.Attack;
+            if (agent != null)
+                agent.isStopped = true;
+            return;
+        }
+
+        // Đuổi theo player
+        if (agent != null)
+        {
+            agent.SetDestination(player.position);
+        }
+
+        if (animator != null)
+        {
+            animator.SetBool("IsChasing", true);
+            animator.SetBool("IsWalking", false);
+        }
+
+        PlaySound(chasingSound);
+
+        // Mất tầm nhìn
+        if (!CanSeePlayer() || distToPlayer > sightDistance)
+        {
+            ReturnToPatrol();
+        }
+    }
+
+    private void AttackState()
     {
         if (player == null)
-            return;
-
-        // First check distance to avoid unnecessary raycasts
-        float dist = Vector3.Distance(transform.position, player.position);
-        if (dist > sightDistance)
-            return;
-
-        // Raycast from slightly above the enemy's pivot to avoid hitting the floor
-        Vector3 origin = transform.position + Vector3.up * 1.2f;
-        Vector3 dir = (player.position + Vector3.up * 1.0f) - origin;
-
-        RaycastHit hit;
-        if (Physics.Raycast(origin, dir.normalized, out hit, sightDistance))
         {
-            if (hit.collider != null && hit.collider.CompareTag("Player"))
+            ReturnToPatrol();
+            return;
+        }
+
+        // Dừng lại để tấn công
+        if (agent != null)
+            agent.isStopped = true;
+
+        // Quay mặt về player
+        Vector3 direction = (player.position - transform.position).normalized;
+        direction.y = 0;
+        if (direction != Vector3.zero)
+        {
+            Quaternion lookRotation = Quaternion.LookRotation(direction);
+            transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * 5f);
+        }
+
+        float distToPlayer = Vector3.Distance(transform.position, player.position);
+
+        // Player đi xa → quay lại Chase
+        if (distToPlayer > attackDistance + 0.5f)
+        {
+            currentState = EnemyState.Chase;
+            return;
+        }
+
+        // Thực hiện tấn công
+        if (attackTimer >= attackCooldown)
+        {
+            PerformAttack();
+            attackTimer = 0f;
+        }
+
+        if (animator != null)
+        {
+            animator.SetBool("IsChasing", true); // Dùng chasing animation khi attack
+            animator.SetBool("IsWalking", false);
+        }
+
+        PlaySound(attackSound);
+
+        // Mất tầm nhìn
+        if (!CanSeePlayer() || distToPlayer > sightDistance)
+        {
+            ReturnToPatrol();
+        }
+    }
+
+    private void PerformAttack()
+    {
+        Debug.Log("Enemy attacks player!");
+
+        if (player != null)
+        {
+            PlayerHealth playerHealth = player.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
             {
-                currentState = EnemyState.Chase;
-                Debug.Log("Player detected!");
+                playerHealth.TakeDamage(attackDamage);
             }
         }
     }
 
-    private void PlaySound(AudioClip soundClip)
+    private void ReturnToPatrol()
     {
-        if (audioSource == null || soundClip == null)
-            return;
+        if (agent != null)
+            agent.isStopped = false;
 
-        if (!audioSource.isPlaying || audioSource.clip != soundClip)
+        if (waypoints != null && waypoints.Length > 0)
         {
-            audioSource.clip = soundClip;
-            audioSource.Play();
+            currentState = EnemyState.Walk;
+            SetDestinationToWaypoint();
+        }
+        else
+        {
+            currentState = EnemyState.Idle;
+            if (agent != null)
+                agent.ResetPath();
+        }
+    }
+
+    private bool CanSeePlayer()
+    {
+        if (player == null)
+            return false;
+
+        float dist = Vector3.Distance(transform.position, player.position);
+        if (dist > sightDistance)
+            return false;
+
+        RaycastHit hit;
+        Vector3 origin = transform.position + Vector3.up * 1.2f;
+        Vector3 dir = (player.position + Vector3.up * 1.0f) - origin;
+
+        if (Physics.Raycast(origin, dir.normalized, out hit, sightDistance))
+        {
+            return hit.collider != null && hit.collider.CompareTag("Player");
+        }
+
+        return false;
+    }
+
+    private void CheckForPlayerDetection()
+    {
+        if (CanSeePlayer())
+        {
+            currentState = EnemyState.Chase;
+            Debug.Log("Player detected!");
         }
     }
 
@@ -153,9 +388,9 @@ public class EnemyController : MonoBehaviour
     {
         if (waypoints == null || waypoints.Length == 0)
         {
-            // No waypoints: go to idle
             currentState = EnemyState.Idle;
-            agent.ResetPath();
+            if (agent != null)
+                agent.ResetPath();
             return;
         }
 
@@ -171,34 +406,26 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
-        if (agent == null)
+        if (agent == null || !agent.isOnNavMesh)
             return;
 
+        // DEBUG: Hiển thị waypoint hiện tại
+        Debug.Log("Moving to waypoint " + currentWaypointIndex + " at position " + waypoints[currentWaypointIndex].position);
+
+        agent.speed = walkSpeed;
         agent.SetDestination(waypoints[currentWaypointIndex].position);
         currentState = EnemyState.Walk;
-        agent.speed = walkSpeed; // Set the walking speed.
-        if (animator) animator.enabled = true;
     }
 
-    // Draw a green raycast line at all times and switch to red when the player is detected.
-    private void OnDrawGizmos()
+    private void PlaySound(AudioClip clip)
     {
-        // Safety: OnDrawGizmos runs in editor before Start, so guard player against null
-        if (player == null)
-        {
-            var p = GameObject.FindGameObjectWithTag("Player");
-            if (p != null)
-                player = p.transform;
-        }
-
-        if (player == null)
+        if (clip == null || audioSource == null)
             return;
 
-        Gizmos.color = currentState == EnemyState.Chase ? Color.red : Color.green;
-
-        // draw from slightly above enemy to player's centre
-        Vector3 from = transform.position + Vector3.up * 1.2f;
-        Vector3 to = player.position + Vector3.up * 1.0f;
-        Gizmos.DrawLine(from, to);
+        if (audioSource.clip != clip)
+        {
+            audioSource.clip = clip;
+            audioSource.Play();
+        }
     }
 }

@@ -1,31 +1,44 @@
 ﻿using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class KillPlayer : MonoBehaviour
 {
-    public string nextSceneName; // Name of the next scene to load
-    public float delay = 0.5f; // Delay in seconds before loading the next scene
-    public GameObject fadeout;
+    [Header("Damage Settings")]
+    public int damageAmount = 10;
+    public float damageInterval = 1f;
 
-    private bool playerInsideTrigger = false;
+    private float lastDamageTime;
+    private PlayerHealth playerHealth;
 
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
-            playerInsideTrigger = true;
-            fadeout.SetActive(true);
-            Invoke("LoadNextScene", delay);
+            playerHealth = other.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(damageAmount);
+                lastDamageTime = Time.time;
+            }
         }
     }
 
-
-    private void LoadNextScene()
+    private void OnTriggerStay(Collider other)
     {
-        if (playerInsideTrigger)
+        if (other.CompareTag("Player") && playerHealth != null)
         {
-            // Load the next scene by name
-            SceneManager.LoadScene(nextSceneName);
+            if (Time.time >= lastDamageTime + damageInterval)
+            {
+                playerHealth.TakeDamage(damageAmount);
+                lastDamageTime = Time.time;
+            }
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            playerHealth = null;
         }
     }
 }
